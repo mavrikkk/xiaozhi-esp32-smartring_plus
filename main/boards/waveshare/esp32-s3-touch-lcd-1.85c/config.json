@@ -1,8 +1,8 @@
 {
-    "name": "viewe-smartring-plus",
+    "name": "waveshare-esp32-s3-touch-lcd-1.85c",
     "type": "box",
     "manufacturer": "waveshare",
-    "description": "SmartRing-Plus by VIEWE with 1.85 inch ST77916 QSPI LCD and ES8311",
+    "description": "SmartRing-Plus adapted inside Waveshare profile with 1.85 inch ST77916 QSPI LCD and ES8311",
     "target": "esp32s3",
     "flash_size": "16MB",
     "psram_size": "8MB",
