@@ -61,14 +61,14 @@
 #define DISPLAY_BACKLIGHT_PIN           QSPI_PIN_NUM_LCD_BL
 #define DISPLAY_BACKLIGHT_OUTPUT_INVERT false
 
-#define TAIJIPI_ST77916_PANEL_BUS_QSPI_CONFIG(sclk, d0, d1, d2, d3, max_trans_sz) 
-    {                                                                             
-        .data0_io_num = d0,                                                       
-        .data1_io_num = d1,                                                       
-        .sclk_io_num = sclk,                                                      
-        .data2_io_num = d2,                                                       
-        .data3_io_num = d3,                                                       
-        .max_transfer_sz = max_trans_sz,                                          
+#define TAIJIPI_ST77916_PANEL_BUS_QSPI_CONFIG(sclk, d0, d1, d2, d3, max_trans_sz) \
+    {                                                                             \
+        .data0_io_num = d0,                                                       \
+        .data1_io_num = d1,                                                       \
+        .sclk_io_num = sclk,                                                      \
+        .data2_io_num = d2,                                                       \
+        .data3_io_num = d3,                                                       \
+        .max_transfer_sz = max_trans_sz,                                          \
     }
 
 #endif // _BOARD_CONFIG_H_
