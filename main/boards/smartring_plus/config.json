@@ -1,11 +1,14 @@
 {
     "name": "smartring_plus",
-    "description": "SmartRing-Plus by VIEWE with 1.85\" ST77916 QSPI LCD and ES8311",
+    "description": "SmartRing-Plus by VIEWE with 1.85 inch ST77916 QSPI LCD and ES8311",
     "target": "esp32s3",
+    "flash_size": "16MB",
+    "psram_size": "8MB",
+    "features": [
+        "display",
+        "audio"
+    ],
     "sdkconfig": {
-        "CONFIG_SPIRAM": "y",
-        "CONFIG_SPIRAM_MODE_OCT": "y",
-        "CONFIG_FLASH_SIZE_16MB": "y",
-        "CONFIG_LCD_PANEL_ST77916": "y"
+        "CONFIG_SPIRAM_MODE_OCT": "y"
     }
 }
