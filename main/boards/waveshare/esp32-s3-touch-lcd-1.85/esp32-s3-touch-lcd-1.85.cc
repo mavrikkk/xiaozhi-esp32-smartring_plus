@@ -387,12 +387,23 @@ public:
     }
 
     virtual AudioCodec* GetAudioCodec() override {
-        static Es8311AudioCodec audio_codec(
-            i2c_bus_, 0x18, AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, 
-            AUDIO_I2S_SPK_GPIO_DOUT, AUDIO_I2S_MIC_GPIO_DIN, AUDIO_PA_PIN, false
-        );
-        return &audio_codec;
-    }
+    static Es8311AudioCodec audio_codec(
+        nullptr,                  // i2c_master_handle (используем классический i2c)
+        I2C_NUM_0,                // i2c_port
+        AUDIO_INPUT_SAMPLE_RATE,  // input_sample_rate (16000)
+        AUDIO_OUTPUT_SAMPLE_RATE, // output_sample_rate (24000)
+        AUDIO_I2S_SPK_GPIO_BCLK,  // bclk_gpio_num
+        AUDIO_I2S_SPK_GPIO_LRCK,  // ws_gpio_num
+        AUDIO_I2S_SPK_GPIO_DOUT,  // dout_gpio_num
+        AUDIO_I2S_MIC_GPIO_DIN,   // din_gpio_num
+        GPIO_NUM_NC,              // mclk_gpio_num (если не используется напрямую)
+        0x18,                     // i2c_address (0x18 для ES8311)
+        0,                        // gpio_speaker_control (PA_PIN передан ниже)
+        false,                    // gpio_speaker_control_invert
+        AUDIO_PA_PIN              // gpio_amp_control_pin (45 пин вашего усилителя)
+    );
+    return &audio_codec;
+}
 
     virtual Display* GetDisplay() override {
         return display_;
