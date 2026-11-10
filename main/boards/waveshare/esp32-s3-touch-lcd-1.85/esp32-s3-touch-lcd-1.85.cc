@@ -1,5 +1,5 @@
 #include "wifi_board.h"
-#include "codecs/no_audio_codec.h"
+#include "audio_codecs/es8311_audio_codec.h" // Подключаем настоящий кодек
 #include "display/lcd_display.h"
 #include "system_reset.h"
 #include "application.h"
@@ -9,14 +9,14 @@
 #include <esp_log.h>
 #include "i2c_device.h"
 #include <driver/i2c_master.h>
+#include <driver/gpio.h>
 #include <driver/ledc.h>
 #include <esp_lcd_panel_io.h>
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_st77916.h>
 #include <esp_timer.h>
-#include "esp_io_expander_tca9554.h"
 
-#define TAG "waveshare_lcd_1_85"
+#define TAG "smartring_plus_lcd"
 
 #define LCD_OPCODE_WRITE_CMD        (0x02ULL)
 #define LCD_OPCODE_READ_CMD         (0x0BULL)
@@ -209,18 +209,16 @@ static const st77916_lcd_init_cmd_t vendor_specific_init_new[] = {
     {0x11, (uint8_t []){0x00}, 1, 120},
     {0x29, (uint8_t []){0x00}, 1, 0},  
 };
+
 class CustomBoard : public WifiBoard {
 private:
     i2c_master_bus_handle_t i2c_bus_;
-    esp_io_expander_handle_t io_expander = NULL;
     LcdDisplay* display_;
-    button_handle_t boot_btn, pwr_btn;
+    button_handle_t boot_btn;
     button_driver_t* boot_btn_driver_ = nullptr;
-    button_driver_t* pwr_btn_driver_ = nullptr;
     static CustomBoard* instance_;
 
     void InitializeI2c() {
-        // Initialize I2C peripheral
         i2c_master_bus_config_t i2c_bus_cfg = {
             .i2c_port = (i2c_port_t)0,
             .sda_io_num = I2C_SDA_IO,
@@ -230,29 +228,23 @@ private:
         ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &i2c_bus_));
     }
     
-    void InitializeTca9554(void) {
-        esp_err_t ret = esp_io_expander_new_i2c_tca9554(i2c_bus_, I2C_ADDRESS, &io_expander);
-        if(ret != ESP_OK)
-            ESP_LOGE(TAG, "TCA9554 create returned error");        
+    void HardwareResetDisplay(void) {
+        // Заменяем TCA9554 на прямое GPIO управление сбросом дисплея и тачскрина
+        gpio_config_t rst_gpio_cfg = {
+            .pin_bit_mask = (1ULL << QSPI_PIN_NUM_LCD_RST),
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+        gpio_config(&rst_gpio_cfg);
 
-        // uint32_t input_level_mask = 0;
-        // ret = esp_io_expander_set_dir(io_expander, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1, IO_EXPANDER_INPUT);               // 设置引脚 EXIO0 和 EXIO1 模式为输入 
-        // ret = esp_io_expander_get_level(io_expander, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1, &input_level_mask);             // 获取引脚 EXIO0 和 EXIO1 的电平状态,存放在 input_level_mask 中
-
-        // ret = esp_io_expander_set_dir(io_expander, IO_EXPANDER_PIN_NUM_2 | IO_EXPANDER_PIN_NUM_3, IO_EXPANDER_OUTPUT);              // 设置引脚 EXIO2 和 EXIO3 模式为输出
-        // ret = esp_io_expander_set_level(io_expander, IO_EXPANDER_PIN_NUM_2 | IO_EXPANDER_PIN_NUM_3, 1);                             // 将引脚电平设置为 1
-        // ret = esp_io_expander_print_state(io_expander);                                                                             // 打印引脚状态
-
-        ret = esp_io_expander_set_dir(io_expander, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1, IO_EXPANDER_OUTPUT);                 // 设置引脚 EXIO0 和 EXIO1 模式为输出
-        ESP_ERROR_CHECK(ret);
-        ret = esp_io_expander_set_level(io_expander, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1, 1);                                // 复位 LCD 与 TouchPad
-        ESP_ERROR_CHECK(ret);
+        gpio_set_level(QSPI_PIN_NUM_LCD_RST, 1);
         vTaskDelay(pdMS_TO_TICKS(300));
-        ret = esp_io_expander_set_level(io_expander, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1, 0);                                // 复位 LCD 与 TouchPad
-        ESP_ERROR_CHECK(ret);
+        gpio_set_level(QSPI_PIN_NUM_LCD_RST, 0);
         vTaskDelay(pdMS_TO_TICKS(300));
-        ret = esp_io_expander_set_level(io_expander, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1, 1);                                // 复位 LCD 与 TouchPad
-        ESP_ERROR_CHECK(ret);
+        gpio_set_level(QSPI_PIN_NUM_LCD_RST, 1);
+        vTaskDelay(pdMS_TO_TICKS(300));
     }
 
     void InitializeSpi() {
@@ -268,7 +260,6 @@ private:
     }
 
     void Initializest77916Display() {
-
         esp_lcd_panel_io_handle_t panel_io = nullptr;
         esp_lcd_panel_handle_t panel = nullptr;
 
@@ -285,12 +276,12 @@ private:
             .lcd_cmd_bits = 32,                 
             .lcd_param_bits = 8,                
             .flags = {                          
-            .dc_low_on_data = 0,            
-            .octal_mode = 0,                
-            .quad_mode = 1,                 
-            .sio_mode = 0,                  
-            .lsb_first = 0,                 
-            .cs_high_active = 0,            
+                .dc_low_on_data = 0,            
+                .octal_mode = 0,                
+                .quad_mode = 1,                 
+                .sio_mode = 0,                  
+                .lsb_first = 0,                 
+                .cs_high_active = 0,            
             },                                  
         };
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)QSPI_LCD_HOST, &io_config, &panel_io));
@@ -306,18 +297,18 @@ private:
         printf("-------------------------------------- Version selection -------------------------------------- \r\n");
         esp_err_t ret;
         int lcd_cmd = 0x04;
-        uint8_t register_data[4]; 
+        uint8_t register_data; 
         size_t param_size = sizeof(register_data);
         lcd_cmd &= 0xff;
         lcd_cmd <<= 8;
-        lcd_cmd |= LCD_OPCODE_READ_CMD << 24;  // Use the read opcode instead of write
-        ret = esp_lcd_panel_io_rx_param(panel_io, lcd_cmd, register_data, param_size); 
+        lcd_cmd |= LCD_OPCODE_READ_CMD << 24;
+        ret = esp_lcd_panel_io_rx_param(panel_io, lcd_cmd, &register_data, param_size); 
         if (ret == ESP_OK) {
-            printf("Register 0x04 data: %02x %02x %02x %02x\n", register_data[0], register_data[1], register_data[2], register_data[3]);
+            printf("Register 0x04 data: %02x %02x %02x %02x\n", register_data, register_data, register_data, register_data);
         } else {
             printf("Failed to read register 0x04, error code: %d\n", ret);
         } 
-        // panel_io_spi_del(io_handle);
+        
         io_config.pclk_hz = 80 * 1000 * 1000;
         if (esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)QSPI_LCD_HOST, &io_config, &panel_io) != ESP_OK){
             printf("Failed to set LCD communication parameters -- SPI\r\n");
@@ -325,13 +316,10 @@ private:
         }
         printf("LCD communication parameters are set successfully -- SPI\r\n");
         
-        // Check register values and configure accordingly
-        if (register_data[0] == 0x00 && register_data[1] == 0x7F && register_data[2] == 0x7F && register_data[3] == 0x7F) {
-            // Handle the case where the register data matches this pattern
+        if (register_data == 0x00 && register_data == 0x7F && register_data == 0x7F && register_data == 0x7F) {
             printf("Vendor-specific initialization for case 1.\n");
         }
-        else if (register_data[0] == 0x00 && register_data[1] == 0x02 && register_data[2] == 0x7F && register_data[3] == 0x7F) {
-            // Provide vendor-specific initialization commands if register data matches this pattern
+        else if (register_data == 0x00 && register_data == 0x02 && register_data == 0x7F && register_data == 0x7F) {
             vendor_config.init_cmds = vendor_specific_init_new;
             vendor_config.init_cmds_size = sizeof(vendor_specific_init_new) / sizeof(st77916_lcd_init_cmd_t);
             printf("Vendor-specific initialization for case 2.\n");
@@ -341,7 +329,7 @@ private:
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB;
         panel_config.bits_per_pixel = QSPI_LCD_BIT_PER_PIXEL;
-        panel_config.reset_gpio_num = QSPI_PIN_NUM_LCD_RST;
+        panel_config.reset_gpio_num = GPIO_NUM_NC; // Сбрасываем аппаратно вручную в HardwareResetDisplay
         panel_config.vendor_config = &vendor_config;
         ESP_ERROR_CHECK(esp_lcd_new_panel_st77916(panel_io, &panel_config, &panel));
 
@@ -357,19 +345,16 @@ private:
  
     void InitializeButtonsCustom() {
         gpio_reset_pin(BOOT_BUTTON_GPIO);                                     
-        gpio_set_direction(BOOT_BUTTON_GPIO, GPIO_MODE_INPUT);   
-        gpio_reset_pin(PWR_BUTTON_GPIO);                                     
-        gpio_set_direction(PWR_BUTTON_GPIO, GPIO_MODE_INPUT);   
-        gpio_reset_pin(PWR_Control_PIN);                                     
-        gpio_set_direction(PWR_Control_PIN, GPIO_MODE_OUTPUT);    
-        // gpio_set_level(PWR_Control_PIN, false);
-        gpio_set_level(PWR_Control_PIN, true); 
+        gpio_set_direction(BOOT_BUTTON_GPIO, GPIO_MODE_INPUT);      
+        gpio_reset_pin(AUDIO_PA_PIN);                                     
+        gpio_set_direction(AUDIO_PA_PIN, GPIO_MODE_OUTPUT);    
+        gpio_set_level(AUDIO_PA_PIN, true); // Включаем аудиоусилитель динамика
     }
+
     void InitializeButtons() {
         instance_ = this;
         InitializeButtonsCustom();
 
-        // Boot Button
         button_config_t boot_btn_config = {
             .long_press_time = 2000,
             .short_press_time = 0
@@ -389,35 +374,12 @@ private:
             }
             app.ToggleChatState();
         }, this);
-
-        // Power Button
-        button_config_t pwr_btn_config = {
-            .long_press_time = 5000,
-            .short_press_time = 0
-        };
-        pwr_btn_driver_ = (button_driver_t*)calloc(1, sizeof(button_driver_t));
-        pwr_btn_driver_->enable_power_save = false;
-        pwr_btn_driver_->get_key_level = [](button_driver_t *button_driver) -> uint8_t {
-            return !gpio_get_level(PWR_BUTTON_GPIO);
-        };
-        ESP_ERROR_CHECK(iot_button_create(&pwr_btn_config, pwr_btn_driver_, &pwr_btn));
-        iot_button_register_cb(pwr_btn, BUTTON_LONG_PRESS_START, nullptr, [](void* button_handle, void* usr_data) {
-            auto self = static_cast<CustomBoard*>(usr_data);
-            if(self->GetBacklight()->brightness() > 0) {
-                self->GetBacklight()->SetBrightness(0);
-                gpio_set_level(PWR_Control_PIN, false);
-            }
-            else {
-                self->GetBacklight()->RestoreBrightness();
-                gpio_set_level(PWR_Control_PIN, true);
-            }
-        }, this);
     }
 
 public:
     CustomBoard() {   
         InitializeI2c();
-        InitializeTca9554();
+        HardwareResetDisplay(); // Вызываем прямой GPIO сброс
         InitializeSpi();
         Initializest77916Display();
         InitializeButtons();
@@ -425,9 +387,10 @@ public:
     }
 
     virtual AudioCodec* GetAudioCodec() override {
-        static NoAudioCodecSimplex audio_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
-            AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, AUDIO_I2S_SPK_GPIO_DOUT, I2S_STD_SLOT_BOTH, AUDIO_I2S_MIC_GPIO_SCK, AUDIO_I2S_MIC_GPIO_WS, AUDIO_I2S_MIC_GPIO_DIN, I2S_STD_SLOT_RIGHT); // I2S_STD_SLOT_LEFT / I2S_STD_SLOT_RIGHT / I2S_STD_SLOT_BOTH
-
+        static Es8311AudioCodec audio_codec(
+            i2c_bus_, 0x18, AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, 
+            AUDIO_I2S_SPK_GPIO_DOUT, AUDIO_I2S_MIC_GPIO_DIN, AUDIO_PA_PIN, false
+        );
         return &audio_codec;
     }
 
@@ -442,5 +405,4 @@ public:
 };
 
 DECLARE_BOARD(CustomBoard);
-
 CustomBoard* CustomBoard::instance_ = nullptr;
