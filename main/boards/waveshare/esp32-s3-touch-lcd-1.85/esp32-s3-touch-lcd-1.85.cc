@@ -388,19 +388,19 @@ public:
 
     virtual AudioCodec* GetAudioCodec() override {
     static Es8311AudioCodec audio_codec(
-        nullptr,                  // i2c_master_handle (используем классический i2c)
-        I2C_NUM_0,                // i2c_port
-        AUDIO_INPUT_SAMPLE_RATE,  // input_sample_rate (16000)
-        AUDIO_OUTPUT_SAMPLE_RATE, // output_sample_rate (24000)
-        AUDIO_I2S_SPK_GPIO_BCLK,  // bclk_gpio_num
-        AUDIO_I2S_SPK_GPIO_LRCK,  // ws_gpio_num
-        AUDIO_I2S_SPK_GPIO_DOUT,  // dout_gpio_num
-        AUDIO_I2S_MIC_GPIO_DIN,   // din_gpio_num
-        GPIO_NUM_NC,              // mclk_gpio_num (если не используется напрямую)
-        0x18,                     // i2c_address (0x18 для ES8311)
-        0,                        // gpio_speaker_control (PA_PIN передан ниже)
-        false,                    // gpio_speaker_control_invert
-        AUDIO_PA_PIN              // gpio_amp_control_pin (45 пин вашего усилителя)
+        nullptr,                  // 1. i2c_master_handle
+        I2C_NUM_0,                // 2. i2c_port
+        AUDIO_INPUT_SAMPLE_RATE,  // 3. input_sample_rate (16000)
+        AUDIO_OUTPUT_SAMPLE_RATE, // 4. output_sample_rate (24000)
+        AUDIO_I2S_SPK_GPIO_BCLK,  // 5. bclk_gpio_num
+        AUDIO_I2S_SPK_GPIO_LRCK,  // 6. ws_gpio_num
+        AUDIO_I2S_SPK_GPIO_DOUT,  // 7. dout_gpio_num
+        AUDIO_I2S_MIC_GPIO_DIN,   // 8. din_gpio_num
+        GPIO_NUM_NC,              // 9. mclk_gpio_num
+        AUDIO_PA_PIN,             // 10. pa_pin (GPIO_NUM_45 — перенесен сюда!)
+        0x18,                     // 11. es8311_addr (0x18)
+        false,                    // 12. use_mclk (ставим false, так как mclk = NC)
+        false                     // 13. pa_inverted
     );
     return &audio_codec;
 }
