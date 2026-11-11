@@ -8,8 +8,8 @@
 #define AUDIO_OUTPUT_SAMPLE_RATE 24000
 
 #define BOOT_BUTTON_GPIO        GPIO_NUM_0
-#define PWR_BUTTON_GPIO         GPIO_NUM_6
-#define PWR_Control_PIN         GPIO_NUM_7
+#define PWR_BUTTON_GPIO         GPIO_NUM_NC
+#define PWR_Control_PIN         GPIO_NUM_47
 
 // Звук I2S (Кодек ES8311 и Микрофон) для SmartRing-Plus
 #define AUDIO_I2S_MIC_GPIO_WS   GPIO_NUM_17
