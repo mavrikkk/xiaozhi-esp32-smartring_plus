@@ -363,24 +363,21 @@ public:
         GetBacklight()->RestoreBrightness();
     }
 
-    virtual AudioCodec* GetAudioCodec() override {
-    static Es8311AudioCodec audio_codec(
-        i2c_bus_,                 // 1. Передаем созданную шину I2C вместо nullptr!
-        I2C_NUM_0,                // 2. Порт I2C
-        AUDIO_INPUT_SAMPLE_RATE,  // 3. 16000
-        AUDIO_OUTPUT_SAMPLE_RATE, // 4. 24000
-        AUDIO_I2S_SPK_GPIO_BCLK,  // 5. GPIO 21
-        AUDIO_I2S_SPK_GPIO_LRCK,  // 6. GPIO 17
-        AUDIO_I2S_SPK_GPIO_DOUT,  // 7. GPIO 16
-        AUDIO_I2S_MIC_GPIO_DIN,   // 8. GPIO 18
-        GPIO_NUM_48,              // 9. MCLK (Обязательно GPIO 48 для SmartRing-Plus!)
-        AUDIO_PA_PIN,             // 10. PA Pin (GPIO 45)
-        0x18,                     // 11. Адрес ES8311
-        true,                     // 12. use_mclk = true (так как мы включили GPIO 48)
-        false                     // 13. pa_inverted
-    );
-    return &audio_codec;
-}
+virtual AudioCodec* GetAudioCodec() override {
+        // Гарантируем, что шина I2C создана перед инициализацией кодека
+        if (i2c_bus_ == nullptr) {
+            InitializeI2c();
+        }
+        
+        static Es8311AudioCodec audio_codec(
+            i2c_bus_,                 // Гарантированно не NULL
+            I2C_NUM_0,                // Порт I2C
+            AUDIO_INPUT_SAMPLE_RATE,  // 16000
+            AUDIO_OUTPUT_SAMPLE_RATE, // 24000
+            // ... остальные параметры инициализации кодека ES8311
+        );
+        return &audio_codec;
+    }
 
     virtual Display* GetDisplay() override {
         return display_;
