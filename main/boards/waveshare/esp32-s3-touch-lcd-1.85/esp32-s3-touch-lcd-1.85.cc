@@ -309,21 +309,14 @@ private:
             printf("Failed to read register 0x04, error code: %d\n", ret);
         } 
         
-        io_config.pclk_hz = 80 * 1000 * 1000;
+        io_config.pclk_hz = 40 * 1000 * 1000;
         if (esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)QSPI_LCD_HOST, &io_config, &panel_io) != ESP_OK){
             printf("Failed to set LCD communication parameters -- SPI\r\n");
             return ;
         }
         printf("LCD communication parameters are set successfully -- SPI\r\n");
-        
-        if (register_data == 0x00 && register_data == 0x7F && register_data == 0x7F && register_data == 0x7F) {
-            printf("Vendor-specific initialization for case 1.\n");
-        }
-        else if (register_data == 0x00 && register_data == 0x02 && register_data == 0x7F && register_data == 0x7F) {
-            vendor_config.init_cmds = vendor_specific_init_new;
-            vendor_config.init_cmds_size = sizeof(vendor_specific_init_new) / sizeof(st77916_lcd_init_cmd_t);
-            printf("Vendor-specific initialization for case 2.\n");
-        }
+        vendor_config.init_cmds = vendor_specific_init_new;
+        vendor_config.init_cmds_size = sizeof(vendor_specific_init_new) / sizeof(st77916_lcd_init_cmd_t);
         printf("------------------------------------- End of version selection------------------------------------- \r\n");
  
         esp_lcd_panel_dev_config_t panel_config = {};
