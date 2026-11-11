@@ -211,7 +211,7 @@ static const st77916_lcd_init_cmd_t vendor_specific_init_new[] = {
 
 class CustomBoard : public WifiBoard {
 private:
-    i2c_master_bus_handle_t i2c_bus_;
+    i2c_master_bus_handle_t i2c_bus_ = nullptr;
     LcdDisplay* display_;
     button_handle_t boot_btn;
     button_driver_t* boot_btn_driver_ = nullptr;
@@ -253,12 +253,17 @@ private:
     void InitializeSpi() {
         ESP_LOGI(TAG, "Initialize QSPI bus");
 
-        const spi_bus_config_t bus_config = TAIJIPI_ST77916_PANEL_BUS_QSPI_CONFIG(QSPI_PIN_NUM_LCD_PCLK,
-                                                                        QSPI_PIN_NUM_LCD_DATA0,
-                                                                        QSPI_PIN_NUM_LCD_DATA1,
-                                                                        QSPI_PIN_NUM_LCD_DATA2,
-                                                                        QSPI_PIN_NUM_LCD_DATA3,
-                                                                        QSPI_LCD_H_RES * 80 * sizeof(uint16_t));
+        spi_bus_config_t bus_config = {
+            .data0_io_num = QSPI_PIN_NUM_LCD_DATA0,
+            .data1_io_num = QSPI_PIN_NUM_LCD_DATA1,
+            .sclk_io_num = QSPI_PIN_NUM_LCD_PCLK,
+            .data2_io_num = QSPI_PIN_NUM_LCD_DATA2,
+            .data3_io_num = QSPI_PIN_NUM_LCD_DATA3,
+            .max_transfer_sz = QSPI_LCD_H_RES * 80 * sizeof(uint16_t),
+            .flags = 0,
+            .isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
+            .intr_flags = 0
+        };
         ESP_ERROR_CHECK(spi_bus_initialize(QSPI_LCD_HOST, &bus_config, SPI_DMA_CH_AUTO));
     }
 
@@ -378,7 +383,15 @@ virtual AudioCodec* GetAudioCodec() override {
             I2C_NUM_0,                // Порт I2C
             AUDIO_INPUT_SAMPLE_RATE,  // 16000
             AUDIO_OUTPUT_SAMPLE_RATE, // 24000
-            // ... остальные параметры инициализации кодека ES8311
+            AUDIO_I2S_SPK_GPIO_BCLK,
+            AUDIO_I2S_SPK_GPIO_LRCK,
+            AUDIO_I2S_SPK_GPIO_DOUT,
+            AUDIO_I2S_MIC_GPIO_DIN,
+            GPIO_NUM_48,
+            AUDIO_PA_PIN,
+            0x18,
+            true,
+            false
         );
         return &audio_codec;
     }
