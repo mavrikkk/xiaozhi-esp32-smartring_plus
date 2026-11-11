@@ -269,7 +269,7 @@ private:
             .cs_gpio_num = QSPI_PIN_NUM_LCD_CS,               
             .dc_gpio_num = GPIO_NUM_NC,
             .spi_mode = 0,                     
-            .pclk_hz = 3 * 1000 * 1000,      
+            .pclk_hz = 40 * 1000 * 1000,      
             .trans_queue_depth = 10,            
             .on_color_trans_done = NULL,                            
             .user_ctx = NULL,                   
@@ -294,30 +294,9 @@ private:
             },
         };
         
-        printf("-------------------------------------- Version selection -------------------------------------- \r\n");
-        esp_err_t ret;
-        int lcd_cmd = 0x04;
-        uint8_t register_data; 
-        size_t param_size = sizeof(register_data);
-        lcd_cmd &= 0xff;
-        lcd_cmd <<= 8;
-        lcd_cmd |= LCD_OPCODE_READ_CMD << 24;
-        ret = esp_lcd_panel_io_rx_param(panel_io, lcd_cmd, &register_data, param_size); 
-        if (ret == ESP_OK) {
-            printf("Register 0x04 data: %02x %02x %02x %02x\n", register_data, register_data, register_data, register_data);
-        } else {
-            printf("Failed to read register 0x04, error code: %d\n", ret);
-        } 
-        
-        io_config.pclk_hz = 40 * 1000 * 1000;
-        if (esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)QSPI_LCD_HOST, &io_config, &panel_io) != ESP_OK){
-            printf("Failed to set LCD communication parameters -- SPI\r\n");
-            return ;
-        }
-        printf("LCD communication parameters are set successfully -- SPI\r\n");
+        // Настраиваем правильную таблицу команд ST77916 сразу
         vendor_config.init_cmds = vendor_specific_init_new;
         vendor_config.init_cmds_size = sizeof(vendor_specific_init_new) / sizeof(st77916_lcd_init_cmd_t);
-        printf("------------------------------------- End of version selection------------------------------------- \r\n");
  
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB;
@@ -381,18 +360,18 @@ public:
 
     virtual AudioCodec* GetAudioCodec() override {
     static Es8311AudioCodec audio_codec(
-        nullptr,                  // 1. i2c_master_handle
-        I2C_NUM_0,                // 2. i2c_port
-        AUDIO_INPUT_SAMPLE_RATE,  // 3. input_sample_rate (16000)
-        AUDIO_OUTPUT_SAMPLE_RATE, // 4. output_sample_rate (24000)
-        AUDIO_I2S_SPK_GPIO_BCLK,  // 5. bclk_gpio_num
-        AUDIO_I2S_SPK_GPIO_LRCK,  // 6. ws_gpio_num
-        AUDIO_I2S_SPK_GPIO_DOUT,  // 7. dout_gpio_num
-        AUDIO_I2S_MIC_GPIO_DIN,   // 8. din_gpio_num
-        GPIO_NUM_NC,              // 9. mclk_gpio_num
-        AUDIO_PA_PIN,             // 10. pa_pin (GPIO_NUM_45 — перенесен сюда!)
-        0x18,                     // 11. es8311_addr (0x18)
-        false,                    // 12. use_mclk (ставим false, так как mclk = NC)
+        i2c_bus_,                 // 1. Передаем созданную шину I2C вместо nullptr!
+        I2C_NUM_0,                // 2. Порт I2C
+        AUDIO_INPUT_SAMPLE_RATE,  // 3. 16000
+        AUDIO_OUTPUT_SAMPLE_RATE, // 4. 24000
+        AUDIO_I2S_SPK_GPIO_BCLK,  // 5. GPIO 21
+        AUDIO_I2S_SPK_GPIO_LRCK,  // 6. GPIO 17
+        AUDIO_I2S_SPK_GPIO_DOUT,  // 7. GPIO 16
+        AUDIO_I2S_MIC_GPIO_DIN,   // 8. GPIO 18
+        GPIO_NUM_48,              // 9. MCLK (Обязательно GPIO 48 для SmartRing-Plus!)
+        AUDIO_PA_PIN,             // 10. PA Pin (GPIO 45)
+        0x18,                     // 11. Адрес ES8311
+        true,                     // 12. use_mclk = true (так как мы включили GPIO 48)
         false                     // 13. pa_inverted
     );
     return &audio_codec;
