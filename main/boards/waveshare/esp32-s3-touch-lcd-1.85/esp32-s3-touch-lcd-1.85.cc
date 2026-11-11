@@ -174,7 +174,6 @@ static const st77916_lcd_init_cmd_t vendor_specific_init_new[] = {
     {0xB5, (uint8_t []){0x04}, 1, 0},
     {0xB6, (uint8_t []){0x00}, 1, 0},
     {0xB7, (uint8_t []){0x00}, 1, 0},
-    
     {0xB8, (uint8_t []){0x48}, 1, 0},
     {0xB9, (uint8_t []){0x00}, 1, 0},
     {0xBA, (uint8_t []){0x0B}, 1, 0},
@@ -205,9 +204,9 @@ static const st77916_lcd_init_cmd_t vendor_specific_init_new[] = {
     {0xD9, (uint8_t []){0xAA}, 1, 0},
     {0xF3, (uint8_t []){0x01}, 1, 0},
     {0xF0, (uint8_t []){0x00}, 1, 0},
-    {0x21, (uint8_t []){0x00}, 1, 0},
-    {0x11, (uint8_t []){0x00}, 1, 120},
-    {0x29, (uint8_t []){0x00}, 1, 0},  
+    {0x21, (uint8_t []){}, 0, 0},
+    {0x11, (uint8_t []){}, 0, 0},
+    {0x29, (uint8_t []){}, 0, 0},  
 };
 
 class CustomBoard : public WifiBoard {
@@ -318,6 +317,12 @@ private:
     void InitializeButtonsCustom() {
         gpio_reset_pin(BOOT_BUTTON_GPIO);                                     
         gpio_set_direction(BOOT_BUTTON_GPIO, GPIO_MODE_INPUT);      
+        
+        // Удерживаем питание платы SmartRing-Plus (GPIO 47 в 0 для работы)
+        gpio_reset_pin(GPIO_NUM_47);
+        gpio_set_direction(GPIO_NUM_47, GPIO_MODE_OUTPUT);
+        gpio_set_level(GPIO_NUM_47, 0);
+
         gpio_reset_pin(AUDIO_PA_PIN);                                     
         gpio_set_direction(AUDIO_PA_PIN, GPIO_MODE_OUTPUT);    
         gpio_set_level(AUDIO_PA_PIN, true); // Включаем аудиоусилитель динамика
