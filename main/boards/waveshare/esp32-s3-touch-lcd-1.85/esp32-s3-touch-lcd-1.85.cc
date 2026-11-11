@@ -218,6 +218,10 @@ private:
     static CustomBoard* instance_;
 
     void InitializeI2c() {
+        if (i2c_bus_ != nullptr) {
+            return; // Защита от повторного создания шины
+        }
+        // ... инициализация I2C шины
         i2c_master_bus_config_t i2c_bus_cfg = {
             .i2c_port = (i2c_port_t)0,
             .sda_io_num = I2C_SDA_IO,
