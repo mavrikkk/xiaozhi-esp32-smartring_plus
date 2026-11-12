@@ -403,7 +403,7 @@ virtual AudioCodec* GetAudioCodec() override {
             AUDIO_I2S_MIC_GPIO_DIN,
             GPIO_NUM_48,
             AUDIO_PA_PIN,
-            0x18,
+            ES8311_CODEC_DEFAULT_ADDR,
             true,
             false
         );
