@@ -220,18 +220,31 @@ private:
 
     void InitializeI2c() {
         if (i2c_bus_ != nullptr) {
-            return; // Защита от повторного создания шины
+            return;
         }
-        // ... инициализация I2C шины
         i2c_master_bus_config_t i2c_bus_cfg = {
-            .i2c_port = (i2c_port_t)0,
+            .i2c_port = I2C_NUM_0,
             .sda_io_num = I2C_SDA_IO,
             .scl_io_num = I2C_SCL_IO,
             .clk_source = I2C_CLK_SRC_DEFAULT,
+            .glitch_ignore_cnt = 7,
+            .intr_priority = 0,
+            .trans_queue_depth = 0,
+            .flags = {
+                .enable_internal_pullup = true, // Обязательно включаем подтяжку!
+            },
         };
         ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &i2c_bus_));
+
+        // Сканируем шину I2C для диагностики
+        ESP_LOGI(TAG, "Scanning I2C bus...");
+        for (uint8_t addr = 1; addr < 127; addr++) {
+            if (i2c_master_probe(i2c_bus_, addr, 50) == ESP_OK) {
+                ESP_LOGI(TAG, "Found I2C device at address: 0x%02X", addr);
+            }
+        }
     }
-    
+
     void HardwareResetDisplay(void) {
         // Заменяем TCA9554 на прямое GPIO управление сбросом дисплея и тачскрина
         gpio_config_t rst_gpio_cfg = {
@@ -331,7 +344,7 @@ private:
         // Удерживаем питание платы SmartRing-Plus (GPIO 47 в 0 для работы)
         gpio_reset_pin(GPIO_NUM_47);
         gpio_set_direction(GPIO_NUM_47, GPIO_MODE_OUTPUT);
-        gpio_set_level(GPIO_NUM_47, 0);
+        gpio_set_level(GPIO_NUM_47, 1);
 
         gpio_reset_pin(AUDIO_PA_PIN);                                     
         gpio_set_direction(AUDIO_PA_PIN, GPIO_MODE_OUTPUT);    
@@ -364,12 +377,12 @@ private:
     }
 
 public:
-    CustomBoard() {   
+    CustomBoard() { 
+        InitializeButtons();
         InitializeI2c();
         HardwareResetDisplay(); // Вызываем прямой GPIO сброс
         InitializeSpi();
         Initializest77916Display();
-        InitializeButtons();
         GetBacklight()->RestoreBrightness();
     }
 
