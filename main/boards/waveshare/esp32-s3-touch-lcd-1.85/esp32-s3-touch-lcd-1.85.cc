@@ -204,9 +204,9 @@ static const st77916_lcd_init_cmd_t vendor_specific_init_new[] = {
     {0xD9, (uint8_t []){0xAA}, 1, 0},
     {0xF3, (uint8_t []){0x01}, 1, 0},
     {0xF0, (uint8_t []){0x00}, 1, 0},
-    {0x21, (uint8_t []){}, 0, 0},
-    {0x11, (uint8_t []){}, 0, 0},
-    {0x29, (uint8_t []){}, 0, 0},  
+    {0x21, (uint8_t []){0x00}, 1, 0},
+    {0x11, (uint8_t []){0x00}, 1, 120},
+    {0x29, (uint8_t []){0x00}, 1, 20},  
 };
 
 
@@ -291,7 +291,7 @@ private:
             .cs_gpio_num = QSPI_PIN_NUM_LCD_CS,               
             .dc_gpio_num = GPIO_NUM_NC,
             .spi_mode = 0,                     
-            .pclk_hz = 40 * 1000 * 1000,      
+            .pclk_hz = 20 * 1000 * 1000,      
             .trans_queue_depth = 10,            
             .on_color_trans_done = NULL,                            
             .user_ctx = NULL,                   
@@ -307,7 +307,7 @@ private:
             },                                  
         };
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)QSPI_LCD_HOST, &io_config, &panel_io));
-
+        
         ESP_LOGI(TAG, "Install ST77916 panel driver");
         
         st77916_vendor_config_t vendor_config = {
@@ -329,6 +329,7 @@ private:
 
         esp_lcd_panel_reset(panel);
         esp_lcd_panel_init(panel);
+        vTaskDelay(pdMS_TO_TICKS(100));
         esp_lcd_panel_disp_on_off(panel, true);
         esp_lcd_panel_swap_xy(panel, DISPLAY_SWAP_XY);
         esp_lcd_panel_mirror(panel, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y);
