@@ -209,6 +209,7 @@ static const st77916_lcd_init_cmd_t vendor_specific_init_new[] = {
     {0x29, (uint8_t []){}, 0, 0},  
 };
 
+
 class CustomBoard : public WifiBoard {
 private:
     i2c_master_bus_handle_t i2c_bus_ = nullptr;
